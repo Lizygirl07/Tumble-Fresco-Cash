@@ -1,494 +1,201 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Cash Log">
-<meta name="theme-color" content="#0f1b2d">
-<title>Tumble Fresco — Cash Received</title>
-<style>
-  :root{
-    --ink:#0f1b2d; --ink-2:#1c2e47; --line:#2b3e5c;
-    --paper:#f6f4ee; --paper-2:#ffffff;
-    --accent:#e0a64e; --accent-deep:#c98a2e;
-    --green:#3f8f5e; --muted:#8597ad; --soft:#dfe6ef;
-    --shadow:0 8px 30px rgba(15,27,45,.10);
-  }
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{
-    margin:0;background:var(--paper);color:var(--ink);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    padding-bottom:120px;
-  }
-  header{
-    background:var(--ink);color:#fff;padding:22px 20px 18px;
-    position:sticky;top:0;z-index:5;box-shadow:var(--shadow);
-  }
-  header h1{margin:0;font-size:20px;letter-spacing:.3px;font-weight:600}
-  header p{margin:4px 0 0;font-size:13px;color:var(--muted)}
-  .wrap{max-width:560px;margin:0 auto;padding:18px 16px}
-  .card{
-    background:var(--paper-2);border-radius:16px;padding:18px;margin-bottom:16px;
-    box-shadow:var(--shadow);
-  }
-  label.field{display:block;font-size:13px;font-weight:600;color:var(--ink-2);
-    margin-bottom:7px;letter-spacing:.2px}
-  input[type=date],input[type=number],input[type=password],input[type=url],textarea{
-    width:100%;padding:14px;border:1.5px solid var(--soft);border-radius:12px;
-    font-size:17px;background:#fff;color:var(--ink);font-family:inherit;
-  }
-  input:focus,textarea:focus{outline:none;border-color:var(--accent)}
-  .denoms{display:flex;flex-direction:column;gap:10px;margin-top:4px}
-  .denom{
-    display:grid;grid-template-columns:64px 1fr auto;align-items:center;gap:12px;
-    padding:8px 10px;background:#fbfaf6;border-radius:12px;border:1px solid #efeadd;
-  }
-  .denom .lbl{font-weight:700;font-size:18px;color:var(--ink)}
-  .stepper{display:flex;align-items:center;gap:8px;justify-content:center}
-  .stepper button{
-    width:42px;height:42px;border-radius:50%;border:none;font-size:22px;font-weight:700;
-    background:var(--ink-2);color:#fff;cursor:pointer;line-height:1;
-  }
-  .stepper button:active{transform:scale(.94)}
-  .stepper input{width:58px;text-align:center;padding:10px 4px;font-size:18px;font-weight:700}
-  .denom .sub{font-variant-numeric:tabular-nums;font-weight:700;color:var(--green);
-    min-width:78px;text-align:right;font-size:16px}
-  .bigtotal{
-    background:var(--ink);color:#fff;border-radius:16px;padding:20px;text-align:center;
-    margin-bottom:16px;
-  }
-  .bigtotal .k{font-size:13px;color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
-  .bigtotal .v{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px}
-  .split{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  .split .box{background:rgba(255,255,255,.08);border-radius:12px;padding:12px}
-  .split .box .k{font-size:11px}
-  .split .box .v{font-size:22px;margin-top:2px}
-  .hint{font-size:12px;color:var(--muted);margin-top:6px}
-  .balanced{color:var(--green);font-weight:600}
-  .submitbar{
-    position:fixed;left:0;right:0;bottom:0;background:rgba(246,244,238,.96);
-    backdrop-filter:blur(8px);border-top:1px solid var(--soft);padding:14px 16px;
-    z-index:6;
-  }
-  .submitbar .inner{max-width:560px;margin:0 auto;display:flex;gap:12px;align-items:center}
-  #submitBtn{
-    flex:1;padding:18px;border:none;border-radius:14px;background:var(--accent);
-    color:var(--ink);font-size:18px;font-weight:700;cursor:pointer;letter-spacing:.3px;
-  }
-  #submitBtn:active{background:var(--accent-deep)}
-  #submitBtn:disabled{opacity:.5}
-  .toast{
-    position:fixed;left:50%;transform:translateX(-50%);bottom:90px;z-index:10;
-    padding:13px 20px;border-radius:30px;color:#fff;font-weight:600;font-size:15px;
-    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.3s;
-  }
-  .toast.show{opacity:1}
-  .toast.ok{background:var(--green)} .toast.err{background:#c0492b}
-  textarea{min-height:54px;resize:vertical}
-  .onhand{margin-top:14px;background:#f1f6f2;border:1px solid #cfe3d6;border-radius:12px;
-    padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
-  .onhand .k{font-size:13px;font-weight:600;color:var(--ink-2)}
-  .onhand .v{font-size:24px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums}
-  .badge{font-size:12px;font-weight:700;padding:5px 11px;border-radius:20px;letter-spacing:.3px}
-  .badge.off{background:#f3e2e0;color:#b04a32}
-  .badge.on{background:#e2efe7;color:#2f7a4f}
-  .fieldgap{margin-top:14px}
-  .lock{
-    position:fixed;inset:0;background:var(--ink);z-index:20;display:flex;
-    align-items:center;justify-content:center;padding:24px;
-  }
-  .lock .box{background:var(--paper-2);border-radius:18px;padding:26px;max-width:340px;width:100%;
-    box-shadow:var(--shadow);text-align:center}
-  .lock h2{margin:0 0 4px;font-size:18px}
-  .lock p{font-size:13px;color:var(--muted);margin:0 0 16px}
-  .lock input{text-align:center;font-size:22px;letter-spacing:4px;font-weight:700}
-  .lock button{width:100%;margin-top:14px;padding:15px;border:none;border-radius:12px;
-    background:var(--accent);color:var(--ink);font-weight:700;font-size:16px;cursor:pointer}
-  .lock .err{color:#d9774b;font-size:13px;margin-top:10px;min-height:16px}
-</style>
-</head>
-<body>
+/**
+ * Tumble Fresco — Cash Received backend
+ *
+ * Bind this script to the Google Sheet you want entries saved into
+ * (Extensions > Apps Script from inside the Sheet), paste this in as
+ * Code.gs, then deploy as a Web app. See SETUP.md for the full walkthrough.
+ *
+ * SECURITY MODEL
+ * - The web app is deployed with "Execute as: Me" and "Who has access: Anyone",
+ *   which is required because the page submits by simply navigating the
+ *   browser (no login prompt). Because "Anyone" can technically reach the
+ *   URL, this script refuses to write anything unless the request includes
+ *   the correct PIN, which is stored in Script Properties (not in this
+ *   file, and not in the page's source).
+ * - Treat the PIN like a shared password: don't post the /exec URL publicly,
+ *   and change the PIN (Project Settings > Script Properties) if you think
+ *   it's leaked.
+ * - Because the PIN travels as a URL query parameter, it can show up in
+ *   browser history and in this script's execution logs. That's an
+ *   acceptable tradeoff for a small internal tool, but don't reuse this PIN
+ *   anywhere sensitive.
+ * - Wash orders (form=order) do NOT require a PIN, by design.
+ */
 
-<div class="lock" id="lockScreen">
-  <div class="box">
-    <h2>Tumble Fresco</h2>
-    <p>Enter the access PIN to use this form</p>
-    <input type="password" id="lockPin" inputmode="numeric" placeholder="••••" autocomplete="off">
-    <button id="lockBtn" type="button">Unlock</button>
-    <div class="err" id="lockErr"></div>
-  </div>
-</div>
+var SHEET_NAME = 'CashLog';     // cash entries tab
+var ORDERS_SHEET_NAME = 'Orders'; // wash order entries tab
 
-<header>
-  <h1>Tumble Fresco</h1>
-  <p>Count notes, split the deposit, save to the sheet</p>
-</header>
+function doGet(e) {
+  var params = e.parameter || {};
 
-<div class="wrap">
-
-  <div class="card">
-    <label class="field">Date</label>
-    <input type="date" id="date">
-  </div>
-
-  <div class="card">
-    <label class="field">Notes received (tap − / +)</label>
-    <div class="denoms" id="denoms"></div>
-  </div>
-
-  <div class="card">
-    <label class="field">Check received (optional)</label>
-    <input type="number" id="checkAmount" inputmode="decimal" placeholder="0.00" min="0" step="0.01">
-  </div>
-
-  <div class="bigtotal">
-    <div class="k">Total received</div>
-    <div class="v" id="totalDisp">$0.00</div>
-    <div class="split">
-      <div class="box"><div class="k">Cash received</div><div class="v" id="cashDisp">$0.00</div></div>
-      <div class="box"><div class="k">Check</div><div class="v" id="checkDisp">$0.00</div></div>
-    </div>
-  </div>
-
-  <div class="card">
-    <label class="field">Cash on hand — how many of each note to keep</label>
-    <div class="denoms" id="onHandDenoms"></div>
-    <div class="onhand" id="onHandBox">
-      <div class="k">Cash on hand</div>
-      <div class="v" id="cashOnHandDisp">$0.00</div>
-    </div>
-    <div class="onhand" id="depositBox" style="background:#eef2f8;border-color:#cdd9ea">
-      <div class="k">Deposit (the rest)</div>
-      <div class="v" id="depositDisp" style="color:var(--ink)">$0.00</div>
-    </div>
-    <div class="hint" id="balanceHint">Set how many of each note stays in the till; the rest is deposited.</div>
-  </div>
-
-  <div class="card">
-    <label class="field">Note (optional)</label>
-    <textarea id="note" placeholder="e.g. coin machine refill, change order…"></textarea>
-  </div>
-
-  <div class="card" id="settingsCard" style="margin-top:6px">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <label class="field" style="margin:0">Backend connection</label>
-      <span id="connBadge" class="badge off">Not connected</span>
-    </div>
-    <div id="urlEntry">
-      <p class="hint" style="margin:8px 0 10px">
-        Paste your Google Apps Script Web app URL (ends in <b>/exec</b>). It's saved
-        only in this browser on this device — it is never stored in the page file.
-      </p>
-      <input type="url" id="urlInput" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"
-        autocomplete="off" spellcheck="false">
-      <button id="saveUrlBtn" type="button" style="width:100%;margin-top:10px;padding:14px;border:none;
-        border-radius:12px;background:var(--ink);color:#fff;font-weight:700;font-size:16px;cursor:pointer">
-        Save on this device</button>
-    </div>
-    <div id="urlSaved" style="display:none">
-      <p class="hint" id="savedUrlText" style="margin:8px 0 10px;word-break:break-all"></p>
-      <button id="changeUrlBtn" type="button" style="width:100%;padding:12px;border:1.5px solid var(--soft);
-        border-radius:12px;background:#fff;font-weight:600;cursor:pointer">Change / clear URL</button>
-    </div>
-
-    <div class="fieldgap">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <label class="field" style="margin:0">Access PIN on this device</label>
-        <span id="pinBadge" class="badge off">Not set</span>
-      </div>
-      <div id="pinEntry">
-        <p class="hint" style="margin:8px 0 10px">
-          This PIN is checked by the Apps Script before it will write to the sheet —
-          not just by this page. Saved only in this browser on this device.
-        </p>
-        <input type="password" id="pinInput" inputmode="numeric" placeholder="PIN" autocomplete="off">
-        <button id="savePinBtn" type="button" style="width:100%;margin-top:10px;padding:14px;border:none;
-          border-radius:12px;background:var(--ink);color:#fff;font-weight:700;font-size:16px;cursor:pointer">
-          Save on this device</button>
-      </div>
-      <div id="pinSaved" style="display:none">
-        <p class="hint" style="margin:8px 0 10px">PIN saved on this device.</p>
-        <button id="changePinBtn" type="button" style="width:100%;padding:12px;border:1.5px solid var(--soft);
-          border-radius:12px;background:#fff;font-weight:600;cursor:pointer">Change / clear PIN</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<div class="submitbar">
-  <div class="inner">
-    <button id="submitBtn">Save entry</button>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  // The Web app URL and the PIN are entered at runtime and saved in THIS
-  // browser only (localStorage). Neither is ever written into this page file.
-  const URL_KEY = "tumbleFresco.webAppUrl";
-  const PIN_KEY = "tumbleFresco.pin";
-  const UNLOCK_KEY = "tumbleFresco.unlocked"; // sessionStorage, this tab only
-  let WEB_APP_URL = "";
-  let SAVED_PIN = "";
-  try { WEB_APP_URL = localStorage.getItem(URL_KEY) || ""; } catch(e) {}
-  try { SAVED_PIN = localStorage.getItem(PIN_KEY) || ""; } catch(e) {}
-
-  const BUSINESS = "Tumble Fresco";
-  const DENOMS = [100,50,20,10,5,1];
-  const counts = {100:0,50:0,20:0,10:0,5:0,1:0};
-  const keep   = {100:0,50:0,20:0,10:0,5:0,1:0};
-
-  const $ = id => document.getElementById(id);
-  const money = n => "$" + (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-
-  // ---- Lock screen ----
-  // This is a convenience gate only — it stops casual use of this device,
-  // it is NOT the real security boundary. The real check happens in the
-  // Apps Script, which refuses to write to the sheet unless the correct
-  // PIN is submitted with the entry.
-  function renderLock(){
-    let unlocked = false;
-    try { unlocked = sessionStorage.getItem(UNLOCK_KEY) === "1"; } catch(e){}
-    $('lockScreen').style.display = unlocked ? "none" : "flex";
-  }
-  $('lockBtn').addEventListener('click', tryUnlock);
-  $('lockPin').addEventListener('keydown', e=>{ if(e.key==="Enter") tryUnlock(); });
-  function tryUnlock(){
-    const v = $('lockPin').value.trim();
-    if (!v){ $('lockErr').textContent = "Enter a PIN"; return; }
-    // If a PIN has been saved on this device, check against it here for a
-    // quick local gate. If none is saved yet, let them into the form so
-    // they can set one up in Backend connection — the sheet write will
-    // still be blocked server-side until a PIN is configured there.
-    if (SAVED_PIN && v !== SAVED_PIN){
-      $('lockErr').textContent = "Incorrect PIN";
-      return;
-    }
-    try { sessionStorage.setItem(UNLOCK_KEY, "1"); } catch(e){}
-    $('lockErr').textContent = "";
-    renderLock();
+  if (params.submit !== '1') {
+    return htmlPage('Tumble Fresco', '<p>Nothing to do.</p>', null);
   }
 
-  // ---- Backend connection panel ----
-  function isValidExec(u){ return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(u.trim()); }
+  // Route by form type. Orders have no PIN requirement; cash entries do.
+  if (params.form === 'order') {
+    return handleOrder_(params);
+  }
+  return handleCash_(params);
+}
 
-  function renderConn(){
-    const badge = $('connBadge');
-    if (WEB_APP_URL){
-      badge.textContent = "Connected"; badge.className = "badge on";
-      $('urlEntry').style.display = "none";
-      $('urlSaved').style.display = "block";
-      $('savedUrlText').textContent = WEB_APP_URL;
-    } else {
-      badge.textContent = "Not connected"; badge.className = "badge off";
-      $('urlEntry').style.display = "block";
-      $('urlSaved').style.display = "none";
-    }
-    const pbadge = $('pinBadge');
-    if (SAVED_PIN){
-      pbadge.textContent = "Set"; pbadge.className = "badge on";
-      $('pinEntry').style.display = "none";
-      $('pinSaved').style.display = "block";
-    } else {
-      pbadge.textContent = "Not set"; pbadge.className = "badge off";
-      $('pinEntry').style.display = "block";
-      $('pinSaved').style.display = "none";
-    }
+function handleCash_(params) {
+  var expectedPin = PropertiesService.getScriptProperties().getProperty('ACCESS_PIN');
+  if (!expectedPin) {
+    return errorPage('No PIN has been configured on the server yet. ' +
+      'Open Project Settings > Script Properties and add ACCESS_PIN before using this form.', params.ret);
+  }
+  if (!params.pin || params.pin !== expectedPin) {
+    return errorPage('Incorrect PIN. This entry was NOT saved.', params.ret);
   }
 
-  $('saveUrlBtn').addEventListener('click', ()=>{
-    const v = $('urlInput').value.trim();
-    if (!isValidExec(v)){
-      toast("That doesn't look like a /exec URL", false); return;
-    }
-    WEB_APP_URL = v;
-    try { localStorage.setItem(URL_KEY, v); } catch(e){
-      toast("Couldn't save on this device", false); return;
-    }
-    renderConn();
-    toast("Connected on this device ✓", true);
-  });
+  try {
+    var sheet = getSheet_();
+    var now = new Date();
 
-  $('changeUrlBtn').addEventListener('click', ()=>{
-    $('urlInput').value = WEB_APP_URL;
-    WEB_APP_URL = "";
-    try { localStorage.removeItem(URL_KEY); } catch(e){}
-    renderConn();
-  });
+    sheet.appendRow([
+      now,                       // A: timestamp saved
+      params.date || '',         // B: date entered
+      params.business || 'Tumble Fresco', // C
+      num_(params.c100), num_(params.c50), num_(params.c20),
+      num_(params.c10), num_(params.c5), num_(params.c1),      // D-I: notes received
+      num_(params.k100), num_(params.k50), num_(params.k20),
+      num_(params.k10), num_(params.k5), num_(params.k1),      // J-O: notes kept on hand
+      num_(params.cashReceived),  // P
+      num_(params.checkAmount),   // Q
+      num_(params.totalReceived), // R
+      num_(params.cashOnHand),    // S
+      num_(params.deposit),       // T
+      params.note || ''           // U
+    ]);
 
-  $('savePinBtn').addEventListener('click', ()=>{
-    const v = $('pinInput').value.trim();
-    if (!v || v.length < 4){
-      toast("Use a PIN of at least 4 characters", false); return;
-    }
-    SAVED_PIN = v;
-    try { localStorage.setItem(PIN_KEY, v); } catch(e){
-      toast("Couldn't save on this device", false); return;
-    }
-    renderConn();
-    toast("PIN saved on this device ✓", true);
-  });
-
-  $('changePinBtn').addEventListener('click', ()=>{
-    $('pinInput').value = "";
-    SAVED_PIN = "";
-    try { localStorage.removeItem(PIN_KEY); } catch(e){}
-    try { sessionStorage.removeItem(UNLOCK_KEY); } catch(e){}
-    renderConn();
-  });
-
-  // default date = today
-  $('date').value = new Date().toISOString().slice(0,10);
-
-  // build denomination steppers
-  const dWrap = $('denoms');
-  DENOMS.forEach(d=>{
-    const row = document.createElement('div');
-    row.className='denom';
-    row.innerHTML = `
-      <div class="lbl">$${d}</div>
-      <div class="stepper">
-        <button data-d="${d}" data-op="-1">−</button>
-        <input type="number" inputmode="numeric" min="0" value="0" id="cnt${d}">
-        <button data-d="${d}" data-op="1">+</button>
-      </div>
-      <div class="sub" id="sub${d}">$0.00</div>`;
-    dWrap.appendChild(row);
-  });
-
-  dWrap.addEventListener('click', e=>{
-    const b = e.target.closest('button'); if(!b) return;
-    const d = +b.dataset.d, op = +b.dataset.op;
-    counts[d] = Math.max(0, counts[d]+op);
-    $('cnt'+d).value = counts[d];
-    clampKeep(d);
-    recalc();
-  });
-  dWrap.addEventListener('input', e=>{
-    if(e.target.tagName!=='INPUT') return;
-    const d = +e.target.id.replace('cnt','');
-    counts[d] = Math.max(0, Math.floor(+e.target.value||0));
-    e.target.value = counts[d];
-    clampKeep(d);
-    recalc();
-  });
-  function clampKeep(d){
-    if(keep[d] > counts[d]){ keep[d] = counts[d]; const k=$('keep'+d); if(k) k.value=keep[d]; }
+    return successPage(params, params.ret);
+  } catch (err) {
+    return errorPage('Server error: ' + err.message, params.ret);
   }
+}
 
-  // build cash-on-hand (keep) steppers
-  const kWrap = $('onHandDenoms');
-  DENOMS.forEach(d=>{
-    const row = document.createElement('div');
-    row.className='denom';
-    row.innerHTML = `
-      <div class="lbl">$${d}</div>
-      <div class="stepper">
-        <button data-d="${d}" data-op="-1">−</button>
-        <input type="number" inputmode="numeric" min="0" value="0" id="keep${d}">
-        <button data-d="${d}" data-op="1">+</button>
-      </div>
-      <div class="sub" id="ksub${d}">$0.00</div>`;
-    kWrap.appendChild(row);
-  });
-  kWrap.addEventListener('click', e=>{
-    const b = e.target.closest('button'); if(!b) return;
-    const d = +b.dataset.d, op = +b.dataset.op;
-    keep[d] = Math.min(counts[d], Math.max(0, keep[d]+op));
-    $('keep'+d).value = keep[d];
-    recalc();
-  });
-  kWrap.addEventListener('input', e=>{
-    if(e.target.tagName!=='INPUT') return;
-    const d = +e.target.id.replace('keep','');
-    keep[d] = Math.min(counts[d], Math.max(0, Math.floor(+e.target.value||0)));
-    e.target.value = keep[d];
-    recalc();
-  });
+function handleOrder_(params) {
+  try {
+    var sheet = getOrdersSheet_();
+    var now = new Date();
 
-  $('checkAmount').addEventListener('input', recalc);
+    sheet.appendRow([
+      now,                          // A: timestamp saved
+      params.date || '',            // B: date entered
+      params.customerName || '',    // C
+      params.customerPhone || '',   // D
+      num_(params.pounds),          // E
+      num_(params.ratePerLb),       // F
+      num_(params.totalCost),       // G
+      params.turnaround || ''       // H: Same day / Next day
+    ]);
 
-  function cashReceived(){ return DENOMS.reduce((s,d)=>s+d*counts[d],0); }
-  function cashOnHand(){ return DENOMS.reduce((s,d)=>s+d*keep[d],0); }
-
-  function recalc(){
-    const cash = cashReceived();
-    const chk = +($('checkAmount').value||0);
-    DENOMS.forEach(d=>{
-      $('sub'+d).textContent = money(d*counts[d]);
-      $('ksub'+d).textContent = money(d*keep[d]);
-    });
-    $('cashDisp').textContent = money(cash);
-    $('checkDisp').textContent = money(chk);
-    $('totalDisp').textContent = money(cash+chk);
-
-    const onHand = cashOnHand();
-    const dep = cash - onHand;
-    $('cashOnHandDisp').textContent = money(onHand);
-    $('depositDisp').textContent = money(dep);
-    const h = $('balanceHint');
-    if (cash<=0){
-      h.textContent = 'Set how many of each note stays in the till; the rest is deposited.';
-    } else {
-      h.innerHTML = '<span class="balanced">✓ Keep '+money(onHand)+' on hand, deposit '+money(dep)+'.</span>';
-    }
+    return orderSuccessPage(params, params.ret);
+  } catch (err) {
+    return errorPage('Server error: ' + err.message, params.ret);
   }
+}
 
-  function toast(msg, ok){
-    const t=$('toast'); t.textContent=msg;
-    t.className='toast show '+(ok?'ok':'err');
-    setTimeout(()=>t.className='toast',2600);
+function getSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow([
+      'Saved at', 'Date', 'Business',
+      '$100', '$50', '$20', '$10', '$5', '$1',
+      'Kept $100', 'Kept $50', 'Kept $20', 'Kept $10', 'Kept $5', 'Kept $1',
+      'Cash received', 'Check amount', 'Total received',
+      'Cash on hand', 'Deposit', 'Note'
+    ]);
+    sheet.setFrozenRows(1);
   }
+  return sheet;
+}
 
-  $('submitBtn').addEventListener('click', ()=>{
-    if(!WEB_APP_URL){
-      toast("Connect the backend first", false);
-      $('settingsCard').scrollIntoView({behavior:"smooth"});
-      $('urlInput').focus();
-      return;
-    }
-    if(!SAVED_PIN){
-      toast("Set an access PIN first", false);
-      $('settingsCard').scrollIntoView({behavior:"smooth"});
-      $('pinInput').focus();
-      return;
-    }
-    const cash = cashReceived();
-    const chk = +($('checkAmount').value||0);
-    if(cash+chk<=0){ toast("Nothing to save yet", false); return; }
+function getOrdersSheet_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(ORDERS_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(ORDERS_SHEET_NAME);
+    sheet.appendRow([
+      'Saved at', 'Date', 'Customer name', 'Phone number',
+      'Pounds', 'Price per lb', 'Total cost', 'Turnaround'
+    ]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
 
-    const onHand = cashOnHand();
-    const dep = cash - onHand;
-    const params = {
-      submit: "1",
-      pin: SAVED_PIN,
-      date: $('date').value, business: BUSINESS,
-      c100:counts[100], c50:counts[50], c20:counts[20],
-      c10:counts[10], c5:counts[5], c1:counts[1],
-      k100:keep[100], k50:keep[50], k20:keep[20],
-      k10:keep[10], k5:keep[5], k1:keep[1],
-      cashReceived: cash, checkAmount: chk, totalReceived: cash+chk,
-      cashOnHand: onHand,
-      deposit: dep,
-      note: $('note').value.trim(),
-      ret: encodeURIComponent(location.href)  // so the confirmation page can link back
-    };
+function num_(v) {
+  var n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
 
-    // Submit by navigating the browser to the script URL. The Apps Script
-    // validates the PIN and writes the row; it never trusts the client.
-    const qs = Object.keys(params)
-      .map(k => encodeURIComponent(k) + "=" + encodeURIComponent(params[k]))
-      .join("&");
-    window.location.href = WEB_APP_URL + "?" + qs;
-  });
+function money_(v) {
+  return '$' + num_(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
 
-  renderLock();
-  renderConn();
-  recalc();
-</script>
-</body>
-</html>
+function successPage(params, ret) {
+  var body =
+    '<div class="ok">✓ Saved</div>' +
+    '<table>' +
+    '<tr><td>Date</td><td>' + esc_(params.date) + '</td></tr>' +
+    '<tr><td>Cash received</td><td>' + money_(params.cashReceived) + '</td></tr>' +
+    '<tr><td>Check</td><td>' + money_(params.checkAmount) + '</td></tr>' +
+    '<tr><td>Total received</td><td>' + money_(params.totalReceived) + '</td></tr>' +
+    '<tr><td>Kept on hand</td><td>' + money_(params.cashOnHand) + '</td></tr>' +
+    '<tr><td>Deposit</td><td>' + money_(params.deposit) + '</td></tr>' +
+    '</table>';
+  return htmlPage('Entry saved', body, ret);
+}
+
+function orderSuccessPage(params, ret) {
+  var body =
+    '<div class="ok">✓ Order saved</div>' +
+    '<table>' +
+    '<tr><td>Date</td><td>' + esc_(params.date) + '</td></tr>' +
+    '<tr><td>Customer</td><td>' + esc_(params.customerName) + '</td></tr>' +
+    '<tr><td>Phone</td><td>' + esc_(params.customerPhone) + '</td></tr>' +
+    '<tr><td>Pounds</td><td>' + esc_(params.pounds) + ' lb</td></tr>' +
+    '<tr><td>Rate</td><td>' + money_(params.ratePerLb) + '/lb</td></tr>' +
+    '<tr><td>Total</td><td>' + money_(params.totalCost) + '</td></tr>' +
+    '<tr><td>Turnaround</td><td>' + esc_(params.turnaround) + '</td></tr>' +
+    '</table>';
+  return htmlPage('Order saved', body, ret);
+}
+
+function errorPage(message, ret) {
+  var body = '<div class="err">✗ ' + esc_(message) + '</div>';
+  return htmlPage('Not saved', body, ret);
+}
+
+function htmlPage(title, bodyHtml, ret) {
+  var backUrl = ret ? decodeURIComponent(ret) : null;
+  var backLink = backUrl
+    ? '<a class="btn" href="' + esc_(backUrl) + '">Back to form</a>'
+    : '';
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<title>' + esc_(title) + '</title>' +
+    '<style>' +
+    'body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;' +
+    'background:#f6f4ee;color:#0f1b2d;padding:32px 20px;text-align:center}' +
+    '.ok{color:#3f8f5e;font-size:22px;font-weight:700;margin-bottom:16px}' +
+    '.err{color:#c0492b;font-size:18px;font-weight:700;margin-bottom:16px}' +
+    'table{margin:0 auto;border-collapse:collapse;text-align:left}' +
+    'td{padding:6px 14px;border-bottom:1px solid #dfe6ef}' +
+    '.btn{display:inline-block;margin-top:24px;padding:14px 22px;background:#0f1b2d;' +
+    'color:#fff;text-decoration:none;border-radius:12px;font-weight:700}' +
+    '</style></head><body>' +
+    bodyHtml + backLink +
+    '</body></html>';
+  return HtmlService.createHtmlOutput(html);
+}
+
+function esc_(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
