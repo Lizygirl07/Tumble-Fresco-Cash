@@ -90,7 +90,16 @@
 
 <div class="wrap">
 
-  <a class="navlink" href="cash-received.html">↔ Switch to Cash Received log</a>
+  <div class="card">
+    <label class="field">Staff name</label>
+    <select id="staffName" style="width:100%;padding:14px;border:1.5px solid var(--soft);
+      border-radius:12px;font-size:17px;background:#fff;color:var(--ink);font-family:inherit;
+      appearance:none;-webkit-appearance:none">
+      <option value="">Select staff…</option>
+      <option value="Maria">Maria</option>
+      <option value="Gabby">Gabby</option>
+    </select>
+  </div>
 
   <div class="card">
     <label class="field">Date</label>
@@ -247,10 +256,12 @@
     }
     const name = $('custName').value.trim();
     const phone = $('custPhone').value.trim();
+    const staff = $('staffName').value;
     const lbs = +($('pounds').value||0);
     const rate = +($('rate').value||0);
     const total = lbs*rate;
 
+    if (!staff){ toast("Select which staff member is logging this", false); $('staffName').focus(); return; }
     if (!name){ toast("Enter the customer's name", false); $('custName').focus(); return; }
     if (lbs<=0){ toast("Enter pounds of clothes", false); $('pounds').focus(); return; }
     if (rate<=0){ toast("Enter a price per pound", false); $('rate').focus(); return; }
@@ -259,6 +270,7 @@
       form: "order",
       submit: "1",
       date: $('date').value,
+      staffName: staff,
       customerName: name,
       customerPhone: phone,
       pounds: lbs,
