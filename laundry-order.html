@@ -91,14 +91,30 @@
 <div class="wrap">
 
   <div class="card">
-    <label class="field">Staff name</label>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
+      <label class="field" style="margin:0">Staff name</label>
+      <button id="manageStaffBtn" type="button" style="border:none;background:none;color:var(--accent-deep);
+        font-weight:700;font-size:13px;cursor:pointer;padding:4px">Manage</button>
+    </div>
     <select id="staffName" style="width:100%;padding:14px;border:1.5px solid var(--soft);
       border-radius:12px;font-size:17px;background:#fff;color:var(--ink);font-family:inherit;
       appearance:none;-webkit-appearance:none">
-      <option value="">Select staff…</option>
-      <option value="Maria">Maria</option>
-      <option value="Gabby">Gabby</option>
     </select>
+  </div>
+
+  <div class="card" id="staffManageCard" style="display:none">
+    <label class="field">Manage staff (this device)</label>
+    <p class="hint" style="margin:0 0 10px">
+      Adding or removing a name here only affects this device. Do the same on any
+      other phone/tablet used to log orders.
+    </p>
+    <div id="staffList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px">
+      <input type="text" id="newStaffInput" placeholder="New staff name" autocomplete="off"
+        style="flex:1;padding:12px;border:1.5px solid var(--soft);border-radius:12px;font-size:16px">
+      <button id="addStaffBtn" type="button" style="padding:12px 18px;border:none;border-radius:12px;
+        background:var(--ink);color:#fff;font-weight:700;cursor:pointer">Add</button>
+    </div>
   </div>
 
   <div class="card">
@@ -181,12 +197,78 @@
   // Shares the same saved Apps Script URL as cash-received.html (same
   // localStorage key, same origin) — no PIN required for this form.
   const URL_KEY = "tumbleFresco.webAppUrl";
+  const STAFF_KEY = "tumbleFresco.staffList";
   let WEB_APP_URL = "";
   try { WEB_APP_URL = localStorage.getItem(URL_KEY) || ""; } catch(e) {}
 
-  let turnaround = "Same day";
   const $ = id => document.getElementById(id);
   const money = n => "$" + (Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  let staffList = [];
+  try {
+    const raw = localStorage.getItem(STAFF_KEY);
+    staffList = raw ? JSON.parse(raw) : ["Maria", "Gabby"];
+  } catch(e) { staffList = ["Maria", "Gabby"]; }
+  if (!Array.isArray(staffList) || staffList.length === 0) staffList = ["Maria", "Gabby"];
+
+  function saveStaffList(){
+    try { localStorage.setItem(STAFF_KEY, JSON.stringify(staffList)); } catch(e) {}
+  }
+
+  function renderStaffDropdown(){
+    const sel = $('staffName');
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Select staff…</option>' +
+      staffList.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+    if (staffList.includes(prev)) sel.value = prev;
+  }
+
+  function renderStaffManage(){
+    const wrap = $('staffList');
+    wrap.innerHTML = staffList.map((n,i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;
+        background:#fbfaf6;border:1px solid #efeadd;border-radius:10px">
+        <span>${n}</span>
+        <button type="button" data-i="${i}" class="rmStaff" style="border:none;background:none;
+          color:#c0492b;font-weight:700;cursor:pointer;font-size:14px">Remove</button>
+      </div>`).join('');
+  }
+
+  $('manageStaffBtn').addEventListener('click', ()=>{
+    const c = $('staffManageCard');
+    c.style.display = c.style.display === 'none' ? 'block' : 'none';
+    if (c.style.display === 'block'){ renderStaffManage(); c.scrollIntoView({behavior:'smooth'}); }
+  });
+
+  $('addStaffBtn').addEventListener('click', ()=>{
+    const v = $('newStaffInput').value.trim();
+    if (!v){ toast("Enter a name first", false); return; }
+    if (staffList.some(n => n.toLowerCase() === v.toLowerCase())){
+      toast("That name is already in the list", false); return;
+    }
+    staffList.push(v);
+    saveStaffList();
+    $('newStaffInput').value = '';
+    renderStaffDropdown();
+    renderStaffManage();
+    toast(v + " added ✓", true);
+  });
+
+  $('staffList').addEventListener('click', e=>{
+    const b = e.target.closest('.rmStaff'); if(!b) return;
+    const i = +b.dataset.i;
+    const removed = staffList[i];
+    staffList.splice(i,1);
+    if (staffList.length === 0) staffList = ["Maria", "Gabby"];
+    saveStaffList();
+    renderStaffDropdown();
+    renderStaffManage();
+    toast(removed + " removed", true);
+  });
+
+  renderStaffDropdown();
+
+  let turnaround = "Same day";
 
   function isValidExec(u){ return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(u.trim()); }
 
